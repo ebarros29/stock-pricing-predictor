@@ -1,0 +1,283 @@
+openapi: "3.1.0"
+
+info:
+  title: Stock Price Predictor
+  description: >
+    LSTM-based deep learning API for stock price prediction.
+    Predicts future closing prices using a 2-layer LSTM model
+    trained on NVDA (NVIDIA) OHLCV data from 2020 to 2026.
+  version: "2.0.0"
+  contact:
+    name: Stock Pricing Predictor
+    url: https://github.com/ebarros/stock-pricing-predictor
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+tags:
+  - name: General
+    description: Health check
+  - name: Prediction
+    description: Forecasting endpoints
+
+paths:
+  /:
+    get:
+      tags: [General]
+      summary: Health check
+      description: Returns server and model status.
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Server is running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                model: LSTM
+                symbol: NVDA
+
+  /predict:
+    post:
+      tags: [Prediction]
+      summary: Predict from symbol
+      description: >
+        Predicts future closing prices for a given stock symbol.
+        Fetches 1 year of historical data from Yahoo Finance internally,
+        then runs autoregressive LSTM prediction.
+      operationId: predictBySymbol
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PredictRequest"
+            examples:
+              nvda7d:
+                summary: NVDA — 7 days
+                value:
+                  symbol: "NVDA"
+                  days: 7
+              aapl30d:
+                summary: AAPL — 30 days
+                value:
+                  symbol: "AAPL"
+                  days: 30
+      responses:
+        "200":
+          description: Prediction result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictResponse"
+              example:
+                symbol: "NVDA"
+                predicted_close: [196.19, 195.15, 193.93, 192.76, 191.81]
+                currency: "USD"
+        "400":
+          description: Insufficient historical data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+
+  /predict-from-data:
+    post:
+      tags: [Prediction]
+      summary: Predict from user-provided OHLCV data
+      description: >
+        Predicts future closing prices from historical OHLCV records
+        provided by the user. Requires at least 60 rows (the model's
+        sequence length). Ideal for custom datasets or non-Yahoo symbols.
+      operationId: predictFromData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PredictFromDataRequest"
+            examples:
+              minimal60:
+                summary: 60 rows — minimum valid payload
+                value:
+                  historical_data:
+                    - date: "2026-07-01"
+                      open: 195.0
+                      high: 198.5
+                      low: 193.2
+                      close: 197.8
+                      volume: 120000000
+                  days: 5
+      responses:
+        "200":
+          description: Prediction result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictFromDataResponse"
+              example:
+                predicted_close: [196.19, 195.15, 193.93, 192.76, 191.81]
+                currency: "USD"
+        "400":
+          description: Missing columns or insufficient rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        model:
+          type: string
+          example: LSTM
+        symbol:
+          type: string
+          example: NVDA
+
+    PredictRequest:
+      type: object
+      required: [symbol, days]
+      properties:
+        symbol:
+          type: string
+          description: Stock ticker symbol (e.g. NVDA, AAPL, TSLA)
+          default: "NVDA"
+          example: "NVDA"
+        days:
+          type: integer
+          description: Number of future trading days to predict
+          minimum: 1
+          maximum: 90
+          default: 7
+          example: 7
+
+    PredictResponse:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: "NVDA"
+        predicted_close:
+          type: array
+          description: Predicted closing prices for each future day
+          items:
+            type: number
+            format: float
+          example: [196.19, 195.15, 193.93, 192.76, 191.81]
+        currency:
+          type: string
+          example: "USD"
+
+    OHLCVRecord:
+      type: object
+      required: [date, open, high, low, close, volume]
+      properties:
+        date:
+          type: string
+          format: date
+          description: Trading date (YYYY-MM-DD)
+          example: "2026-07-01"
+        open:
+          type: number
+          format: float
+          description: Opening price
+          example: 195.0
+        high:
+          type: number
+          format: float
+          description: Highest price of the day
+          example: 198.5
+        low:
+          type: number
+          format: float
+          description: Lowest price of the day
+          example: 193.2
+        close:
+          type: number
+          format: float
+          description: Closing price (adjusted)
+          example: 197.8
+        volume:
+          type: number
+          format: int64
+          description: Trading volume
+          example: 120000000
+
+    PredictFromDataRequest:
+      type: object
+      required: [historical_data]
+      properties:
+        historical_data:
+          type: array
+          description: Historical OHLCV records. Must contain at least 60 rows (model sequence length).
+          minItems: 60
+          items:
+            $ref: "#/components/schemas/OHLCVRecord"
+        days:
+          type: integer
+          description: Number of future trading days to predict
+          minimum: 1
+          maximum: 90
+          default: 7
+          example: 7
+
+    PredictFromDataResponse:
+      type: object
+      properties:
+        predicted_close:
+          type: array
+          description: Predicted closing prices for each future day
+          items:
+            type: number
+            format: float
+          example: [196.19, 195.15, 193.93, 192.76, 191.81]
+        currency:
+          type: string
+          example: "USD"
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message
+          example: "Need at least 60 days of data, got 45"
+
+    ValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          description: List of validation errors
+          items:
+            type: object
+            properties:
+              loc:
+                type: array
+                items:
+                  type: string
+              msg:
+                type: string
+              type:
+                type: string

@@ -64,6 +64,8 @@ stock-pricing-predictor/
 │   ├── test_data_collector.py # 7 tests — data integrity
 │   ├── test_model.py          # 5 tests — LSTM architecture
 │   └── test_preprocessor.py   # 11 tests — scaling, sequences, predict_future
+├── docs/
+│   └── swagger.yaml           # OpenAPI 3.1 specification
 ├── models/                    # Saved .keras model + .pkl scaler
 ├── outputs/                   # CSV data + prediction plots
 ├── notebooks/
@@ -159,6 +161,16 @@ Response:
 ```
 
 > Open `http://localhost:8000/docs` for the interactive Swagger UI.
+
+## OpenAPI Specification
+
+The full API spec is at [`docs/swagger.yaml`](docs/swagger.yaml) — OpenAPI 3.1.0, 3 paths, 8 schemas with validation rules, examples, and error responses.
+
+```bash
+# Preview with Swagger UI in Docker
+docker run -p 8080:8080 -v $(pwd)/docs/swagger.yaml:/spec.yaml:ro \
+  -e SWAGGER_JSON=/spec.yaml swaggerapi/swagger-ui
+```
 
 ## Running Tests
 
