@@ -198,3 +198,18 @@ Covers: closing price trends, 20/50-day moving averages, daily returns distribut
 | Serialization | `.keras` (model), `joblib` (scaler) |
 | Visualization | `matplotlib` |
 | Testing | `pytest` |
+
+
+## Monitoring & Scalability
+
+The API includes real-time telemetry, response time tracking, and resource monitoring using Prometheus and Grafana.
+
+### Architecture
+1. **FastAPI Instrumentator**: Exposes HTTP request latency, status codes, and traffic volume via `/metrics`.
+2. **Prometheus**: Scrapes `/metrics` every 5 seconds.
+3. **Grafana**: Visualizes real-time performance, latencies, and active throughput.
+
+### Running with Docker Compose
+
+```bash
+docker-compose up --build -d
