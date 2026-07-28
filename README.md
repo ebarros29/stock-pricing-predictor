@@ -212,4 +212,4 @@ The API includes real-time telemetry, response time tracking, and resource monit
 ### Running with Docker Compose
 
 ```bash
-docker-compose up --build -d
+docker-compose up -d
