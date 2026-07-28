@@ -1,0 +1,27 @@
+services:
+  # ── API (LSTM prediction server) ─────────────────────────────────
+  - type: web
+    name: stock-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: TF_CPP_MIN_LOG_LEVEL
+        value: "3"
+
+  # ── Prometheus (metrics scraper) ─────────────────────────────────
+  - type: web
+    name: stock-prometheus
+    runtime: docker
+    dockerfilePath: ./Dockerfile.prometheus
+    plan: free
+    healthCheckPath: /-/healthy
+
+  # ── Grafana (dashboards) ────────────────────────────────────────
+  - type: web
+    name: stock-grafana
+    runtime: docker
+    dockerfilePath: ./Dockerfile.grafana
+    plan: free
+    healthCheckPath: /api/health

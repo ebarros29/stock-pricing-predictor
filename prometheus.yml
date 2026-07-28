@@ -5,4 +5,4 @@ scrape_configs:
   - job_name: 'stock_pricing_api'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['api:8000']
+      - targets: ['stock-api:8000']
