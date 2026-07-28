@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.data_collector import download_stock_data
 from src.preprocessor import Preprocessor
@@ -17,6 +18,7 @@ preprocessor = Preprocessor.load(f"{MODEL_DIR}/preprocessor.pkl")
 
 app = FastAPI(title="Stock Price Predictor", version="2.0.0")
 
+Instrumentator().instrument(app).expose(app)
 
 # ── Schemas ──────────────────────────────────────────────────────
 
