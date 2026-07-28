@@ -1,9 +1,12 @@
 import os
+import time
 import pandas as pd
 import numpy as np
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Counter, Histogram, Gauge
+import prometheus_client
 
 from src.data_collector import download_stock_data
 from src.preprocessor import Preprocessor
@@ -12,13 +15,37 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 MODEL_DIR = "models"
 
+# ── Custom Prometheus metrics ───────────────────────────────────
+
+PREDICTION_COUNT = Counter(
+    "model_predictions_total",
+    "Total number of model predictions made",
+    ["endpoint", "symbol"],
+)
+
+PREDICTION_DURATION = Histogram(
+    "model_prediction_duration_seconds",
+    "Model inference duration in seconds",
+    ["endpoint"],
+    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+)
+
+MODEL_LOAD_TIME = Gauge(
+    "model_load_duration_seconds",
+    "Time taken to load the TensorFlow model from disk",
+)
+
+# ── Load model & preprocessor ───────────────────────────────────
+
+_t0 = time.perf_counter()
 from tensorflow.keras.models import load_model
 model = load_model(f"{MODEL_DIR}/lstm_model.keras")
 preprocessor = Preprocessor.load(f"{MODEL_DIR}/preprocessor.pkl")
+MODEL_LOAD_TIME.set(time.perf_counter() - _t0)
 
 app = FastAPI(title="Stock Price Predictor", version="2.0.0")
 
-Instrumentator().instrument(app).expose(app)
+Instrumentator(registry=prometheus_client.REGISTRY).instrument(app).expose(app)
 
 # ── Schemas ──────────────────────────────────────────────────────
 
@@ -70,7 +97,14 @@ def predict(req: PredictRequest):
             status_code=400,
             detail=f"Need at least {preprocessor.seq_length} days of data, got {len(df)}"
         )
+
+    _t0 = time.perf_counter()
     prices = preprocessor.predict_future(model, df, req.days)
+    elapsed = time.perf_counter() - _t0
+
+    PREDICTION_COUNT.labels(endpoint="/predict", symbol=req.symbol).inc(req.days)
+    PREDICTION_DURATION.labels(endpoint="/predict").observe(elapsed)
+
     return PredictResponse(
         symbol=req.symbol,
         predicted_close=[round(float(p), 2) for p in prices]
@@ -101,7 +135,13 @@ def predict_from_data(req: PredictFromDataRequest):
             detail=f"Need at least {preprocessor.seq_length} rows, got {len(df)}"
         )
 
+    _t0 = time.perf_counter()
     prices = preprocessor.predict_future(model, df, req.days)
+    elapsed = time.perf_counter() - _t0
+
+    PREDICTION_COUNT.labels(endpoint="/predict-from-data", symbol="custom").inc(req.days)
+    PREDICTION_DURATION.labels(endpoint="/predict-from-data").observe(elapsed)
+
     return PredictFromDataResponse(
         predicted_close=[round(float(p), 2) for p in prices]
     )
