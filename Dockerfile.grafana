@@ -1,0 +1,14 @@
+FROM grafana/grafana:10.0.0
+
+# ── Datasource ──────────────────────────────────────────────────
+COPY grafana/datasources/datasource.yml /etc/grafana/provisioning/datasources/
+
+# ── Dashboards ──────────────────────────────────────────────────
+COPY grafana/dashboards/dashboard.yml        /etc/grafana/provisioning/dashboards/
+COPY grafana/dashboards/model-performance.json /etc/grafana/provisioning/dashboards/
+
+EXPOSE 3000
+
+ENV GF_SECURITY_ADMIN_USER=admin
+ENV GF_SECURITY_ADMIN_PASSWORD=admin
+ENV GF_USERS_ALLOW_SIGN_UP=false
