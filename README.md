@@ -213,3 +213,21 @@ The API includes real-time telemetry, response time tracking, and resource monit
 
 ```bash
 docker-compose up -d
+```
+
+### Monitoring Endpoints
+
+| Service | URL | Description |
+|---|---|---|
+| **API** | `http://localhost:8000` | Health check and prediction endpoints |
+| **Prometheus** | `http://localhost:9090` | Metrics scraper — raw PromQL interface |
+| **Grafana** | `http://localhost:3000/d/stock-model-performance/stock-predictor-performance-do-modelo?orgId=1&refresh=10s&from=now-15m&to=now` | Pre-built dashboard with latency, throughput, resource usage |
+
+> **Grafana login:** `admin` / `admin`
+
+### Dashboard Panels
+
+- **Visão Geral** — total predictions, P50 latency, error rate, model load time
+- **Latência** — HTTP p50/p95/p99 and HTTP vs model inference comparison
+- **Throughput** — requests per second and predictions per minute by endpoint
+- **Recursos e Erros** — CPU, memory, HTTP status breakdown, latency alerts
