@@ -53,23 +53,36 @@ flowchart LR
 ```
 stock-pricing-predictor/
 ├── src/
-│   ├── data_collector.py      # Yahoo Finance REST client
-│   ├── preprocessor.py        # Scaling, sequence creation, predict_future()
-│   ├── lstm_model.py          # Keras LSTM architecture
-│   ├── train.py               # Training orchestrator
-│   └── evaluate.py            # Metrics (MAE, RMSE, MAPE) + plots
+│   ├── data_collector.py        # Yahoo Finance REST client
+│   ├── preprocessor.py          # Scaling, sequence creation, predict_future()
+│   ├── lstm_model.py            # Keras LSTM architecture
+│   ├── train.py                 # Training orchestrator
+│   └── evaluate.py              # Metrics (MAE, RMSE, MAPE) + plots
 ├── api/
-│   └── app.py                 # FastAPI server
+│   └── app.py                   # FastAPI server + Prometheus metrics
 ├── tests/
-│   ├── test_data_collector.py # 7 tests — data integrity
-│   ├── test_model.py          # 5 tests — LSTM architecture
-│   └── test_preprocessor.py   # 11 tests — scaling, sequences, predict_future
+│   ├── test_data_collector.py   # 7 tests — data integrity
+│   ├── test_model.py            # 5 tests — LSTM architecture
+│   ├── test_preprocessor.py     # 11 tests — scaling, sequences, predict_future
+│   └── predict_payload.json     # 60-row sample payload for /predict-from-data
+├── grafana/
+│   ├── dashboards/
+│   │   ├── model-performance.json  # Pre-built monitoring dashboard
+│   │   └── dashboard.yml           # Dashboard provider config
+│   └── datasources/
+│       └── datasource.yml          # Prometheus datasource config
 ├── docs/
-│   └── swagger.yaml           # OpenAPI 3.1 specification
-├── models/                    # Saved .keras model + .pkl scaler
-├── outputs/                   # CSV data + prediction plots
+│   └── swagger.yaml             # OpenAPI 3.1 specification
+├── models/                      # Saved .keras model + .pkl scaler
+├── outputs/                     # CSV data + prediction plots
 ├── notebooks/
-│   └── eda.ipynb              # Exploratory data analysis
+│   └── eda.ipynb                # Exploratory data analysis
+├── Dockerfile                   # API service image
+├── Dockerfile.prometheus        # Prometheus metrics scraper image
+├── Dockerfile.grafana           # Grafana dashboard image
+├── docker-compose.yml           # Local multi-service orchestration
+├── render.yaml                  # Render Blueprint (production deploy)
+├── prometheus.yml               # Prometheus scrape config
 └── requirements.txt
 ```
 
@@ -159,6 +172,16 @@ Response:
   "currency": "USD"
 }
 ```
+
+Or load a full 60-record payload from a file:
+
+```bash
+curl -s -X POST http://localhost:8000/predict-from-data \
+  -H "Content-Type: application/json" \
+  -d @tests/predict_payload.json
+```
+
+> [`tests/predict_payload.json`](tests/predict_payload.json) contains 60 days of synthetic OHLCV data ready to test.
 
 > Open `http://localhost:8000/docs` for the interactive Swagger UI.
 
